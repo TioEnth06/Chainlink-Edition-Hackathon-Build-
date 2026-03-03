@@ -1,0 +1,27 @@
+[features]
+seeds = true
+skip-lint = false
+
+[programs.localnet]
+patent_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+lending = "LendXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8Q"
+funding = "FundXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
+staking = "StakXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
+marketplace = "MarkXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
+
+[programs.devnet]
+patent_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+lending = "LendXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8Q"
+funding = "FundXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
+staking = "StakXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
+marketplace = "MarkXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

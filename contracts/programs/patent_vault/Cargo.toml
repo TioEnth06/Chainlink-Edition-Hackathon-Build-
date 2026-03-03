@@ -1,0 +1,20 @@
+[package]
+name = "patent-vault"
+version = "0.1.0"
+description = "NanoFi Patent Vault - register and tokenize IP on-chain"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "patent_vault"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.29.0"
+anchor-spl = { version = "0.29.0", features = ["associated_token"] }

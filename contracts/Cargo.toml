@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "programs/patent_vault",
+    "programs/lending",
+    "programs/funding",
+    "programs/staking",
+    "programs/marketplace",
+]
+resolver = "2"

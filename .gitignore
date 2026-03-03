@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Build / cache
+*.tsbuildinfo
+.next/
+
+# Rust / Anchor
+contracts/target/
+**/target/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.log

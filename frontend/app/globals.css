@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0a0a0b;
+  --panel: #111113;
+  --surface: #18181b;
+  --border: #27272a;
+  --muted: #71717a;
+  --primary: #22d3ee;
+  --accent: #a78bfa;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: #fafafa;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.2);
+  color: #fafafa;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-zinc-800/80 bg-zinc-900/50 shadow-inner transition-all duration-300;
+  }
+  .card-hover {
+    @apply hover:border-cyan-500/30 hover:bg-zinc-900/80 hover:shadow-glow;
+  }
+  .card-glass {
+    @apply rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl transition-all duration-300;
+  }
+  .input-base {
+    @apply w-full rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3.5 text-white placeholder-zinc-500 transition focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/15;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-cyan-400 px-6 py-3 font-medium text-zinc-900 transition hover:bg-cyan-300 active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border border-zinc-600 bg-transparent px-6 py-3 font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-white/5 hover:text-white;
+  }
+  .btn-ghost {
+    @apply rounded-full px-4 py-2 text-sm font-medium text-zinc-400 transition hover:bg-white/5 hover:text-white;
+  }
+  .section-label {
+    @apply font-display text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400/90;
+  }
+  .heading-display {
+    @apply font-display text-display-xl font-bold tracking-tight text-white;
+  }
+  .heading-1 {
+    @apply font-display text-display-md font-bold text-white;
+  }
+  .heading-2 {
+    @apply font-display text-xl font-semibold text-white;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
