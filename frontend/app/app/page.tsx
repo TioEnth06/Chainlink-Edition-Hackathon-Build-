@@ -20,12 +20,12 @@ const yieldStats = [
   { label: "Funding success", value: "94%", sub: "Last 30 days" },
 ];
 
-// News — Maple-style cards (number, title, description on hover, accent bars)
+// News — Maple-style cards (number, title, description on hover, accent bars, image)
 const newsItems = [
-  { num: "01", title: "NanoFi partners with Chainlink", desc: "On-chain oracles for real-time valuation, automated liquidation, and verified collateral.", href: "#", barClass: "bg-cyan-500" },
-  { num: "02", title: "IP-NFT standard on Solana", desc: "New IP-NFT standard is live on Solana devnet for tokenizing and trading patent assets.", href: "#", barClass: "bg-cyan-400" },
-  { num: "03", title: "Vault and lending in beta", desc: "Patent vault and lending module now in beta. Register IP and access collateralized funding.", href: "#", barClass: "bg-zinc-600" },
-  { num: "04", title: "Staking and marketplace", desc: "Earn yield from patent revenues and list or buy IP-NFTs on the NanoFi marketplace.", href: "#", barClass: "bg-violet-500" },
+  { num: "01", title: "NanoFi partners with Chainlink", desc: "On-chain oracles for real-time valuation, automated liquidation, and verified collateral.", href: "#", barClass: "bg-cyan-500", image: "/images/news-chainlink.png" },
+  { num: "02", title: "IP-NFT standard on Solana", desc: "New IP-NFT standard is live on Solana devnet for tokenizing and trading patent assets.", href: "#", barClass: "bg-cyan-400", image: "/images/news-ipnft.png" },
+  { num: "03", title: "Vault and lending in beta", desc: "Patent vault and lending module now in beta. Register IP and access collateralized funding.", href: "#", barClass: "bg-zinc-600", image: "/images/news-vault.png" },
+  { num: "04", title: "Staking and marketplace", desc: "Earn yield from patent revenues and list or buy IP-NFTs on the NanoFi marketplace.", href: "#", barClass: "bg-violet-500", image: "/images/news-staking.png" },
 ];
 
 function TvlCard({ label, value, suffix, barWidths }: { label: string; value: string; suffix: string; barWidths: [string, string, string] }) {
@@ -147,16 +147,20 @@ export default function AppDashboard() {
               href={item.href}
               className="group relative flex h-[322px] flex-col gap-3 overflow-hidden rounded-xl bg-zinc-900/80 py-5 transition-all lg:h-[360px]"
             >
-              <span className="px-5 font-display text-lg font-normal text-white/50">{item.num}</span>
-              <div className="absolute left-0 w-full px-5 transition-all duration-300 top-20 flex flex-col gap-2 lg:top-[222px] group-hover:top-20">
+              <div className="absolute inset-0">
+                <Image src={item.image} alt="" fill className="object-cover opacity-60 group-hover:opacity-75 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/80 to-zinc-900/40" />
+              </div>
+              <span className="relative z-10 px-5 font-display text-lg font-normal text-white/50">{item.num}</span>
+              <div className="absolute left-0 w-full px-5 transition-all duration-300 top-20 flex flex-col gap-2 lg:top-[222px] group-hover:top-20 z-10">
                 <h3 className="font-display text-xl font-normal text-white">{item.title}</h3>
                 <p className="text-sm font-normal text-zinc-500 transition-all duration-300 opacity-100 lg:opacity-0 group-hover:opacity-100">
                   {item.desc}
                 </p>
               </div>
-              <div className={`absolute left-0 w-full transition-all duration-300 bottom-[26px] h-[13px] opacity-10 group-hover:h-[360px] ${item.barClass}`} />
-              <div className={`absolute bottom-[13px] left-0 h-[13px] w-full opacity-50 ${item.barClass}`} />
-              <div className={`absolute bottom-0 left-0 h-[13px] w-full ${item.barClass}`} />
+              <div className={`absolute left-0 w-full transition-all duration-300 bottom-[26px] h-[13px] opacity-10 group-hover:h-[360px] z-10 ${item.barClass}`} />
+              <div className={`absolute bottom-[13px] left-0 h-[13px] w-full opacity-50 z-10 ${item.barClass}`} />
+              <div className={`absolute bottom-0 left-0 h-[13px] w-full z-10 ${item.barClass}`} />
             </a>
           ))}
         </div>
