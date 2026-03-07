@@ -65,4 +65,12 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  .oracle-glow {
+    animation: oracle-glow 4s ease-in-out infinite;
+  }
+}
+
+@keyframes oracle-glow {
+  0%, 100% { box-shadow: 0 0 40px rgba(34, 211, 238, 0.12); }
+  50% { box-shadow: 0 0 56px rgba(34, 211, 238, 0.2); }
 }
