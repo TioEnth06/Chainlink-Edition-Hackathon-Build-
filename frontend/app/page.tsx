@@ -187,7 +187,7 @@ export default function Home() {
       {/* Chainlink — oracle-style, less boxy */}
       <section className="border-t border-white/[0.06] bg-zinc-950/50 py-14 px-6">
         <div className="mx-auto max-w-4xl">
-          <div className="oracle-glow relative mb-8 mx-auto max-w-3xl overflow-hidden rounded-2xl border border-cyan-500/20 md:rounded-3xl" style={{ aspectRatio: "2.4/1" }}>
+          <div className="oracle-glow relative mx-auto mb-8 max-w-3xl overflow-hidden rounded-2xl border border-cyan-500/20 md:rounded-3xl" style={{ aspectRatio: "2.4/1" }}>
             <Image src="/images/chainlink.jpg" alt="Powered by Chainlink" fill className="object-cover object-center opacity-90" sizes="(max-width: 768px) 100vw, 48rem" />
             <div className="absolute inset-0 bg-gradient-to-t from-cyan-950/40 via-transparent to-transparent" aria-hidden />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_50%,rgba(34,211,238,0.08),transparent_70%)]" aria-hidden />
