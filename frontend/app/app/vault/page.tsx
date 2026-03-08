@@ -3,7 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import BN from "bn.js";
+import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getPatentVaultProgram, getPatentVaultProgramId, derivePatentVaultPda } from "@/lib/programs/patent-vault";
 
 // Mock for patent owner dashboard
 const dashboard = {
@@ -32,7 +36,8 @@ const allPatentsMock = [
 ];
 
 export default function VaultPage() {
-  const { connected } = useWallet();
+  const { connection } = useConnection();
+  const { connected, publicKey } = useWallet();
   const [showForm, setShowForm] = useState(false);
   const [mintedPatent, setMintedPatent] = useState<{
     title: string;
@@ -54,6 +59,8 @@ export default function VaultPage() {
   const [commercializationDesc, setCommercializationDesc] = useState("");
   const [patentFilter, setPatentFilter] = useState<"all" | "Nanotech" | "Biotech" | "Pharma" | "Cleantech">("all");
   const [patentSearch, setPatentSearch] = useState("");
+  const [txPending, setTxPending] = useState(false);
+  const [txError, setTxError] = useState<string | null>(null);
 
   const filteredPatents = allPatentsMock.filter((p) => {
     const matchFilter = patentFilter === "all" || p.sector === patentFilter;
@@ -61,25 +68,65 @@ export default function VaultPage() {
     return matchFilter && matchSearch;
   });
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMintedPatent({
-      title: title || "Patent",
-      patentId: patentId || "—",
-      jurisdiction,
-      stage,
-      valuation: valuation || "0",
-      status: "Active",
-    });
-    setShowForm(false);
-    setTitle("");
-    setPatentId("");
-    setJurisdiction("");
-    setFilingDate("");
-    setStage("R&D");
-    setValuation("");
-    setIpfsHash("");
-    setCommercializationDesc("");
+    if (!publicKey) return;
+    setTxError(null);
+    setTxPending(true);
+    try {
+      const program = getPatentVaultProgram(connection, { publicKey } as any);
+      const mintKeypair = Keypair.generate();
+      const programId = getPatentVaultProgramId();
+      const [patentVaultPda] = derivePatentVaultPda(programId, publicKey, patentId.trim() || "default");
+      const ownerTokenAccount = getAssociatedTokenAddressSync(
+        mintKeypair.publicKey,
+        publicKey
+      );
+      const documentHash = new Uint8Array(32);
+      if (ipfsHash.trim()) new TextEncoder().encode(ipfsHash).slice(0, 32).forEach((b, i) => (documentHash[i] = b));
+      const valuationLamports = new BN(valuation.replace(/\D/g, "") || "0", 10);
+
+      await program.methods
+        .registerIp(
+          patentId.trim() || "default",
+          jurisdiction.trim() || "US",
+          Array.from(documentHash),
+          valuationLamports
+        )
+        .accounts({
+          owner: publicKey,
+          patentVault: patentVaultPda,
+          mint: mintKeypair.publicKey,
+          ownerTokenAccount,
+          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+          systemProgram: SystemProgram.programId,
+          associatedTokenProgram: new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+        })
+        .signers([mintKeypair])
+        .rpc();
+
+      setMintedPatent({
+        title: title || "Patent",
+        patentId: patentId || "—",
+        jurisdiction,
+        stage,
+        valuation: valuation || "0",
+        status: "Active",
+      });
+      setShowForm(false);
+      setTitle("");
+      setPatentId("");
+      setJurisdiction("");
+      setFilingDate("");
+      setStage("R&D");
+      setValuation("");
+      setIpfsHash("");
+      setCommercializationDesc("");
+    } catch (err: any) {
+      setTxError(err?.message ?? "Transaction failed");
+    } finally {
+      setTxPending(false);
+    }
   };
 
   return (
@@ -100,6 +147,12 @@ export default function VaultPage() {
       <p className="mt-3 text-zinc-400">
         Register patents, view valuation, and unlock Funding, Lending, and Marketplace.
       </p>
+
+      {txError && (
+        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+          {txError}
+        </div>
+      )}
 
       {!connected ? (
         <div className="card mt-10 p-8 text-center text-zinc-400">
@@ -270,7 +323,9 @@ export default function VaultPage() {
                   <textarea value={commercializationDesc} onChange={(e) => setCommercializationDesc(e.target.value)} className="input-base min-h-[100px]" placeholder="Brief description of use and market" />
                 </div>
                 <div className="flex gap-3">
-                  <button type="submit" className="btn-primary">Mint patent NFT</button>
+                  <button type="submit" className="btn-primary" disabled={txPending}>
+                    {txPending ? "Sending…" : "Mint patent NFT"}
+                  </button>
                   <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancel</button>
                 </div>
               </form>

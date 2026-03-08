@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, TokenProgram, Transfer};
 
-declare_id!("FundXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8");
+declare_id!("4PnL3j83Hs5CBBvRKxXSaVCQnrrZ9AKM3M9n4LUYxSoj");
 
 #[program]
 pub mod funding {

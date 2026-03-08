@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, TokenProgram, Transfer};
 
-declare_id!("MarkXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8");
+declare_id!("ArujxKZ1qTzj1zRxqb1FpjKy6gxSaf1aWayURGz4f9zs");
 
 #[program]
 pub mod marketplace {

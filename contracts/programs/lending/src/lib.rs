@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, TokenProgram, Transfer};
 
-declare_id!("LendXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8Q");
+declare_id!("7UPmL6f2GH1B7gQA859eUjSz9bjXffFahwPj86YhPyP1");
 
 /// Chainlink OCR2 program ID (Solana Data Feeds owner)
 pub const CHAINLINK_FEED_OWNER: &str = "HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny";

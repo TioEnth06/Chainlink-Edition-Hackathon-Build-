@@ -4,17 +4,17 @@ skip-lint = false
 
 [programs.localnet]
 patent_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-lending = "LendXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8Q"
-funding = "FundXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
-staking = "StakXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
-marketplace = "MarkXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
+lending = "7UPmL6f2GH1B7gQA859eUjSz9bjXffFahwPj86YhPyP1"
+funding = "4PnL3j83Hs5CBBvRKxXSaVCQnrrZ9AKM3M9n4LUYxSoj"
+staking = "BhFJUSCibfyyRHngRHW9R31kPmWGYBdyDdZAYmxG3VdC"
+marketplace = "ArujxKZ1qTzj1zRxqb1FpjKy6gxSaf1aWayURGz4f9zs"
 
 [programs.devnet]
 patent_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
-lending = "LendXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8Q"
-funding = "FundXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
-staking = "StakXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
-marketplace = "MarkXgE4PjqQzFjWBPPzQz7R8QzR8QzR8QzR8QzR8"
+lending = "7UPmL6f2GH1B7gQA859eUjSz9bjXffFahwPj86YhPyP1"
+funding = "4PnL3j83Hs5CBBvRKxXSaVCQnrrZ9AKM3M9n4LUYxSoj"
+staking = "BhFJUSCibfyyRHngRHW9R31kPmWGYBdyDdZAYmxG3VdC"
+marketplace = "ArujxKZ1qTzj1zRxqb1FpjKy6gxSaf1aWayURGz4f9zs"
 
 [registry]
 url = "https://api.apr.dev"

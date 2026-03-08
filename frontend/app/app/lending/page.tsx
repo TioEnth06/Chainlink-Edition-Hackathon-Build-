@@ -1,40 +1,206 @@
 "use client";
 
-import { useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useState, useEffect, useCallback } from "react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import BN from "bn.js";
+import {
+  getLendingProgram,
+  getLendingProgramId,
+  derivePoolPda,
+  derivePositionPda,
+} from "@/lib/programs/lending";
 
 const DURATIONS = ["30 days", "90 days", "180 days"];
 
 export default function LendingPage() {
-  const { connected } = useWallet();
+  const { connection } = useConnection();
+  const { connected, publicKey: walletPublicKey } = useWallet();
   const [view, setView] = useState<"borrower" | "lender">("borrower");
   const [requestAmount, setRequestAmount] = useState("");
   const [duration, setDuration] = useState("90 days");
   const [acceptLiquidation, setAcceptLiquidation] = useState(false);
-  const [hasLoan, setHasLoan] = useState(false);
+  const [txPending, setTxPending] = useState(false);
+  const [txError, setTxError] = useState<string | null>(null);
 
-  // Mock borrower dashboard
-  const loan = {
-    outstanding: 12000,
-    interestAccrued: 120,
-    liquidationThreshold: "80%",
-    riskLevel: "Medium",
-    timeRemaining: "45 days",
-  };
+  // Deposit form
+  const [patentVaultPubkey, setPatentVaultPubkey] = useState("");
+  const [collateralValuation, setCollateralValuation] = useState("");
 
-  // Mock pool
-  const pool = {
-    totalLiquidity: "450,000",
-    activeLoans: 12,
-    avgApy: "8.5%",
-    defaultRate: "0.2%",
-    riskRating: "A",
-  };
+  // On-chain state
+  const [poolAccount, setPoolAccount] = useState<{
+    liquidationLtvBps: number;
+    stableMint: PublicKey;
+  } | null>(null);
+  const [positionAccount, setPositionAccount] = useState<{
+    collateralValuationLamports: BN;
+    debtLamports: BN;
+    liquidatable: boolean;
+  } | null>(null);
 
-  const handleRequestLoan = (e: React.FormEvent) => {
+  const programId = getLendingProgramId();
+  const [poolPda] = derivePoolPda(programId);
+  const positionPda = walletPublicKey
+    ? derivePositionPda(programId, walletPublicKey)[0]
+    : null;
+
+  const fetchOnChainState = useCallback(async () => {
+    if (!connected || !walletPublicKey) return;
+    const program = getLendingProgram(connection, { publicKey: walletPublicKey } as any);
+    try {
+      const pool = await program.account.lendingPool.fetch(poolPda).catch(() => null);
+      if (pool) setPoolAccount({
+        liquidationLtvBps: Number((pool as any).liquidationLtvBps),
+        stableMint: (pool as any).stableMint as PublicKey,
+      });
+      const position = await program.account.loanPosition.fetch(positionPda!).catch(() => null);
+      if (position) setPositionAccount({
+        collateralValuationLamports: (position as any).collateralValuationLamports as BN,
+        debtLamports: (position as any).debtLamports as BN,
+        liquidatable: (position as any).liquidatable as boolean,
+      });
+    } catch {
+      setPoolAccount(null);
+      setPositionAccount(null);
+    }
+  }, [connection, connected, walletPublicKey, poolPda, positionPda]);
+
+  useEffect(() => {
+    fetchOnChainState();
+  }, [fetchOnChainState]);
+
+  const handleDepositCollateral = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (requestAmount && acceptLiquidation) setHasLoan(true);
+    if (!walletPublicKey || !patentVaultPubkey.trim() || !collateralValuation.trim()) return;
+    setTxError(null);
+    setTxPending(true);
+    try {
+      const program = getLendingProgram(connection, { publicKey: walletPublicKey } as any);
+      const patentVault = new PublicKey(patentVaultPubkey.trim());
+      const lamports = new BN(collateralValuation.replace(/\D/g, "") || "0");
+      await program.methods
+        .depositCollateral(patentVault, lamports)
+        .accounts({
+          borrower: walletPublicKey,
+          pool: poolPda,
+          position: positionPda!,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      await fetchOnChainState();
+      setPatentVaultPubkey("");
+      setCollateralValuation("");
+    } catch (err: any) {
+      setTxError(err?.message ?? "Transaction failed");
+    } finally {
+      setTxPending(false);
+    }
   };
+
+  const handleBorrow = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walletPublicKey || !requestAmount || !poolAccount) return;
+    setTxError(null);
+    setTxPending(true);
+    try {
+      const program = getLendingProgram(connection, { publicKey: walletPublicKey } as any);
+      const poolStableTreasury = getAssociatedTokenAddressSync(
+        poolAccount.stableMint,
+        poolPda,
+        true
+      );
+      const borrowerStableAta = getAssociatedTokenAddressSync(
+        poolAccount.stableMint,
+        walletPublicKey
+      );
+      const amount = new BN(requestAmount.replace(/\D/g, "") || "0");
+      await program.methods
+        .borrow(amount)
+        .accounts({
+          borrower: walletPublicKey,
+          pool: poolPda,
+          position: positionPda!,
+          poolStableTreasury,
+          borrowerStableAta,
+          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+        })
+        .rpc();
+      await fetchOnChainState();
+      setRequestAmount("");
+    } catch (err: any) {
+      setTxError(err?.message ?? "Transaction failed");
+    } finally {
+      setTxPending(false);
+    }
+  };
+
+  const handleRepay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walletPublicKey || !requestAmount || !poolAccount) return;
+    setTxError(null);
+    setTxPending(true);
+    try {
+      const program = getLendingProgram(connection, { publicKey: walletPublicKey } as any);
+      const poolStableTreasury = getAssociatedTokenAddressSync(
+        poolAccount.stableMint,
+        poolPda,
+        true
+      );
+      const borrowerStableAta = getAssociatedTokenAddressSync(
+        poolAccount.stableMint,
+        walletPublicKey
+      );
+      const amount = new BN(requestAmount.replace(/\D/g, "") || "0");
+      await program.methods
+        .repay(amount)
+        .accounts({
+          borrower: walletPublicKey,
+          pool: poolPda,
+          position: positionPda!,
+          poolStableTreasury,
+          borrowerStableAta,
+          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+        })
+        .rpc();
+      await fetchOnChainState();
+      setRequestAmount("");
+    } catch (err: any) {
+      setTxError(err?.message ?? "Transaction failed");
+    } finally {
+      setTxPending(false);
+    }
+  };
+
+  const handleUpdateFromFeed = async () => {
+    const feedAddress = process.env.NEXT_PUBLIC_CHAINLINK_FEED_SOL_USD;
+    if (!walletPublicKey || !feedAddress?.trim() || !positionPda) {
+      setTxError("Set NEXT_PUBLIC_CHAINLINK_FEED_SOL_USD in .env and connect wallet.");
+      return;
+    }
+    setTxError(null);
+    setTxPending(true);
+    try {
+      const program = getLendingProgram(connection, { publicKey: walletPublicKey } as any);
+      await program.methods
+        .updateCollateralFromFeed()
+        .accounts({
+          chainlinkFeed: new PublicKey(feedAddress.trim()),
+          position: positionPda,
+        })
+        .rpc();
+      await fetchOnChainState();
+    } catch (err: any) {
+      setTxError(err?.message ?? "Transaction failed");
+    } finally {
+      setTxPending(false);
+    }
+  };
+
+  const hasPosition = positionAccount != null;
+  const debtLamports = positionAccount?.debtLamports?.toNumber() ?? 0;
+  const collateralLamports = positionAccount?.collateralValuationLamports?.toNumber() ?? 0;
+  const liquidationBps = poolAccount?.liquidationLtvBps ?? 8000;
 
   return (
     <div>
@@ -43,6 +209,12 @@ export default function LendingPage() {
       <p className="mt-3 text-zinc-400">
         As Borrower: request loans against patent collateral. As Lender: deposit into pools and earn yield.
       </p>
+
+      {txError && (
+        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+          {txError}
+        </div>
+      )}
 
       {!connected ? (
         <div className="card mt-10 p-8 text-center text-zinc-400">
@@ -70,43 +242,68 @@ export default function LendingPage() {
           {view === "borrower" && (
             <>
               <div className="card p-8">
+                <h2 className="heading-2">Deposit collateral</h2>
+                <form onSubmit={handleDepositCollateral} className="mt-6 space-y-4">
+                  <div>
+                    <label className="mb-1.5 block text-sm text-zinc-400">Patent Vault (Pubkey)</label>
+                    <input
+                      type="text"
+                      value={patentVaultPubkey}
+                      onChange={(e) => setPatentVaultPubkey(e.target.value)}
+                      className="input-base"
+                      placeholder="e.g. Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm text-zinc-400">Collateral valuation (lamports)</label>
+                    <input
+                      type="text"
+                      value={collateralValuation}
+                      onChange={(e) => setCollateralValuation(e.target.value)}
+                      className="input-base"
+                      placeholder="e.g. 50000000"
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary" disabled={txPending}>
+                    {txPending ? "Sending…" : "Deposit collateral"}
+                  </button>
+                </form>
+              </div>
+
+              <div className="card p-8">
                 <h2 className="heading-2">Loan request</h2>
                 <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div>
-                    <p className="text-xs text-zinc-500">Patent valuation</p>
-                    <p className="mt-1 font-semibold text-white">$50,000</p>
+                    <p className="text-xs text-zinc-500">Patent valuation (on-chain)</p>
+                    <p className="mt-1 font-semibold text-white">
+                      {collateralLamports > 0 ? `${(collateralLamports / 1e9).toFixed(2)} SOL` : "—"}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-zinc-500">Max borrow amount</p>
-                    <p className="mt-1 font-semibold text-white">$37,500</p>
+                    <p className="text-xs text-zinc-500">Max borrow (75% LTV)</p>
+                    <p className="mt-1 font-semibold text-white">
+                      {collateralLamports > 0 ? `${Math.floor((collateralLamports * 0.75) / 1e9)} lamports` : "—"}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs text-zinc-500">Current LTV</p>
-                    <p className="mt-1 font-semibold text-white">0%</p>
+                    <p className="text-xs text-zinc-500">Current debt</p>
+                    <p className="mt-1 font-semibold text-white">{debtLamports > 0 ? `${debtLamports}` : "0"} lamports</p>
                   </div>
                   <div>
-                    <p className="text-xs text-zinc-500">Suggested rate</p>
-                    <p className="mt-1 font-semibold text-white">8% APY</p>
+                    <p className="text-xs text-zinc-500">Liquidation LTV</p>
+                    <p className="mt-1 font-semibold text-cyan-400">{liquidationBps / 100}%</p>
                   </div>
                 </div>
-                <form onSubmit={handleRequestLoan} className="mt-8 space-y-5">
+                <form onSubmit={handleBorrow} className="mt-8 space-y-5">
                   <div>
-                    <label className="mb-1.5 block text-sm text-zinc-400">Requested amount</label>
+                    <label className="mb-1.5 block text-sm text-zinc-400">Borrow amount (lamports)</label>
                     <input
                       type="text"
                       value={requestAmount}
                       onChange={(e) => setRequestAmount(e.target.value)}
                       className="input-base"
-                      placeholder="e.g. 10000"
+                      placeholder="e.g. 10000000"
                     />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm text-zinc-400">Duration</label>
-                    <select value={duration} onChange={(e) => setDuration(e.target.value)} className="input-base">
-                      {DURATIONS.map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
                   </div>
                   <label className="flex cursor-pointer items-center gap-3">
                     <input
@@ -115,43 +312,62 @@ export default function LendingPage() {
                       onChange={(e) => setAcceptLiquidation(e.target.checked)}
                       className="rounded border-zinc-600 bg-zinc-800"
                     />
-                    <span className="text-sm text-zinc-400">I accept auto-liquidation conditions when LTV exceeds threshold</span>
+                    <span className="text-sm text-zinc-400">I accept auto-liquidation when LTV exceeds threshold</span>
                   </label>
-                  <button type="submit" className="btn-primary">Request loan</button>
+                  <button type="submit" className="btn-primary" disabled={txPending || !poolAccount}>
+                    {txPending ? "Sending…" : "Request loan"}
+                  </button>
                 </form>
               </div>
 
-              {hasLoan && (
+              {hasPosition && (
                 <div className="card p-8">
                   <h2 className="heading-2">Loan dashboard</h2>
                   <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
                     <div>
-                      <p className="text-xs text-zinc-500">Outstanding loan</p>
-                      <p className="mt-1 text-xl font-semibold text-white">${loan.outstanding.toLocaleString()}</p>
+                      <p className="text-xs text-zinc-500">Collateral value</p>
+                      <p className="mt-1 text-xl font-semibold text-white">{collateralLamports} lamports</p>
                     </div>
                     <div>
-                      <p className="text-xs text-zinc-500">Interest accrued</p>
-                      <p className="mt-1 text-xl font-semibold text-white">${loan.interestAccrued}</p>
+                      <p className="text-xs text-zinc-500">Outstanding debt</p>
+                      <p className="mt-1 text-xl font-semibold text-white">{debtLamports} lamports</p>
                     </div>
                     <div>
                       <p className="text-xs text-zinc-500">Liquidation threshold</p>
-                      <p className="mt-1 text-xl font-semibold text-cyan-400">{loan.liquidationThreshold}</p>
+                      <p className="mt-1 text-xl font-semibold text-cyan-400">{liquidationBps / 100}%</p>
                     </div>
                     <div>
-                      <p className="text-xs text-zinc-500">Risk level</p>
-                      <p className="mt-1 text-xl font-semibold text-white">{loan.riskLevel}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-zinc-500">Time remaining</p>
-                      <p className="mt-1 text-xl font-semibold text-white">{loan.timeRemaining}</p>
+                      <p className="text-xs text-zinc-500">Liquidatable</p>
+                      <p className="mt-1 text-xl font-semibold text-white">{positionAccount?.liquidatable ? "Yes" : "No"}</p>
                     </div>
                   </div>
                   <div className="mt-6 flex flex-wrap gap-3">
-                    <button type="button" className="btn-primary">Repay</button>
-                    <button type="button" className="btn-secondary">Add collateral</button>
-                    <button type="button" className="btn-secondary">Extend loan</button>
+                    <form onSubmit={handleRepay} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={requestAmount}
+                        onChange={(e) => setRequestAmount(e.target.value)}
+                        className="input-base w-32"
+                        placeholder="Amount"
+                      />
+                      <button type="submit" className="btn-primary" disabled={txPending || !poolAccount}>
+                        {txPending ? "…" : "Repay"}
+                      </button>
+                    </form>
+                    <button
+                      type="button"
+                      onClick={handleUpdateFromFeed}
+                      className="btn-secondary"
+                      disabled={txPending}
+                    >
+                      Update from Chainlink feed
+                    </button>
                   </div>
                 </div>
+              )}
+
+              {!poolAccount && (
+                <p className="text-sm text-zinc-500">Pool not initialized on-chain. Initialize pool first to borrow.</p>
               )}
             </>
           )}
@@ -159,31 +375,13 @@ export default function LendingPage() {
           {view === "lender" && (
             <div className="card p-8">
               <h2 className="heading-2">Lending pool overview</h2>
-              <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-                <div>
-                  <p className="text-xs text-zinc-500">Total liquidity</p>
-                  <p className="mt-1 text-xl font-semibold text-white">${pool.totalLiquidity}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-500">Active loans</p>
-                  <p className="mt-1 text-xl font-semibold text-white">{pool.activeLoans}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-500">Average APY</p>
-                  <p className="mt-1 text-xl font-semibold text-cyan-400">{pool.avgApy}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-500">Default rate</p>
-                  <p className="mt-1 text-xl font-semibold text-white">{pool.defaultRate}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-zinc-500">Risk rating</p>
-                  <p className="mt-1 text-xl font-semibold text-white">{pool.riskRating}</p>
-                </div>
-              </div>
-              <div className="mt-8 flex gap-3">
-                <button type="button" className="btn-primary">Deposit liquidity</button>
-                <button type="button" className="btn-secondary">Withdraw liquidity</button>
+              <p className="mt-2 text-sm text-zinc-500">
+                Pool PDA: {poolPda.toBase58()}. Deposit liquidity and pool stats require pool initialization and treasury setup.
+              </p>
+              <div className="mt-6 flex gap-3">
+                <button type="button" className="btn-secondary" onClick={fetchOnChainState}>
+                  Refresh state
+                </button>
               </div>
             </div>
           )}

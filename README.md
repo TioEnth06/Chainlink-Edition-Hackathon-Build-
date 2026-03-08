@@ -162,13 +162,43 @@ This hackathon version includes:
 
 ## How It's Built
 
-**Frontend:** React / Next.js, Solana Wallet Adapter
+**Frontend:** React / Next.js, Solana Wallet Adapter, Anchor client
 
-**Backend:** Node.js (if needed)
-
-**Smart Contracts:** Solana Program Library (Rust)
+**Smart Contracts:** Solana Program Library (Rust, Anchor), Chainlink Solana (Data Feeds)
 
 **Oracle:** Chainlink
+
+## Environment and Run
+
+### Environment variables (frontend)
+
+Copy `frontend/.env.example` to `frontend/.env.local` and set:
+
+- `NEXT_PUBLIC_SOLANA_RPC` – Solana RPC URL (default: `https://api.devnet.solana.com`)
+- `NEXT_PUBLIC_LENDING_PROGRAM_ID` – Lending program ID (see `contracts/Anchor.toml` after build)
+- `NEXT_PUBLIC_PATENT_VAULT_PROGRAM_ID` – Patent Vault program ID
+- `NEXT_PUBLIC_CHAINLINK_FEED_SOL_USD` – Chainlink SOL/USD feed address for Devnet from [Chainlink Solana Feeds](https://docs.chain.link/data-feeds/price-feeds/addresses?network=solana)
+
+### Build and deploy contracts (Solana Devnet)
+
+From repo root:
+
+```bash
+cd contracts
+anchor build
+anchor deploy --provider.cluster devnet
+```
+
+Ensure the wallet in `Anchor.toml` (`[provider]`) has SOL on Devnet. After deploy, use the printed program IDs in `frontend/.env.local`.
+
+### Run frontend
+
+```bash
+npm install
+npm run dev
+```
+
+Open the dev server URL (e.g. http://localhost:3000). Use **Enter App** to open the dApp; connect a Solana wallet (e.g. Phantom) set to Devnet.
 
 ## Roadmap
 
